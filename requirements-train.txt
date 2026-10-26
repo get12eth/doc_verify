@@ -1,0 +1,8 @@
+# Only needed for scripts/train_siamese.py (not for serving)
+torch>=2.2
+numpy>=1.26,<2.0
+opencv-python-headless>=4.9
+scikit-image>=0.22
+pydantic>=2.7          # imported transitively by app.signature
+onnx>=1.16
+onnxruntime>=1.18

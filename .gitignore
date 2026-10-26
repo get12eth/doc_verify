@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+models/
+data/
+#Environment / secrets
+.env
+*.key
+
+# Jupyter
+.ipynb_checkpoints/
+
+#Data and models (track with DVC or Git LFS instead)
+
+*.csv
+*.parquet
+*.pt
+*.pkl
+OverAll Architecture Overview.jpg
+detected.png
+#IDEs / OS
+.vscode/
+.idea/
+.DS_Store
+
