@@ -1,17 +1,4 @@
-"""Heuristic handwritten-signature similarity (classical computer vision, no training required).
 
-Pipeline per image:  flatten lighting -> Otsu ink mask -> drop ruled lines & specks -> crop to ink ->
-scale into a fixed canvas -> skeletonise (removes pen-thickness differences).
-
-Score = weighted blend of
-  * shift-tolerant chamfer distance between skeletons (shape, main signal)
-  * HOG cosine similarity (stroke-direction statistics)
-  * masked SSIM on blurred strokes (local structure)
-
-This is a BASELINE: genuine signatures vary a lot, so calibrate thresholds on labelled pairs
-(scripts/calibrate_signature.py) and treat the "review" band as a human decision. For higher accuracy
-train a writer-independent Siamese network (CEDAR / BHSig260 / MCYT) and plug it in here.
-"""
 from __future__ import annotations
 
 from dataclasses import dataclass

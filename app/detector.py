@@ -1,9 +1,5 @@
 """Signature localisation with a YOLOv8-style ONNX detector (CPU, ONNX Runtime).
 
-Point DOCVERIFY_SIG_DETECTOR_MODEL at an ONNX export of a single-class signature detector
-(search Hugging Face for "signature detection yolov8 onnx" and check the licence). The expected
-output layout is the standard YOLOv8 one: (1, 4 + num_classes, num_anchors) with xywh boxes in
-letterboxed input pixels. Anything else will fail loudly rather than return wrong boxes.
 """
 from __future__ import annotations
 
