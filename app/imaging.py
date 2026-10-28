@@ -19,6 +19,38 @@ def load_document(data: bytes, *, page: int = 0, dpi: int = 300, max_pixels: int
     return _decode_image(data, max_pixels)
 
 
+def load_document_pages(data: bytes, *, page: int = -1, dpi: int = 300,
+                        max_pixels: int = 60_000_000) -> list[np.ndarray]:
+    """Decode a document into separate pages so detectors retain page-level resolution."""
+    if data[:5] != b"%PDF-":
+        return [_decode_image(data, max_pixels)]
+    try:
+        doc = pymupdf.open(stream=data, filetype="pdf")
+    except Exception as exc:
+        raise InvalidDocument("Unreadable PDF.") from exc
+    with doc:
+        if doc.needs_pass:
+            raise InvalidDocument("Password-protected PDFs are not supported.")
+        if page == -1:
+            page_numbers = range(doc.page_count)
+        elif 0 <= page < doc.page_count:
+            page_numbers = [page]
+        else:
+            raise InvalidDocument(f"Page {page} out of range (document has {doc.page_count} page(s)).")
+        rendered = []
+        for page_number in page_numbers:
+            pdf_page = doc[page_number]
+            scale = dpi / 72
+            area = pdf_page.rect.width * pdf_page.rect.height * scale * scale
+            if area > max_pixels:
+                scale *= math.sqrt(max_pixels / area)
+            pix = pdf_page.get_pixmap(matrix=pymupdf.Matrix(scale, scale),
+                                      colorspace=pymupdf.csRGB, alpha=False)
+            rgb = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, 3)
+            rendered.append(cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
+        return rendered
+
+
 def _render_pdf(data: bytes, page: int, dpi: int, max_pixels: int) -> np.ndarray:
     try:
         doc = pymupdf.open(stream=data, filetype="pdf")

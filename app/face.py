@@ -1,6 +1,8 @@
 """Face verification with InsightFace (SCRFD detector + ArcFace embeddings, CPU/ONNX Runtime)."""
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 from insightface.app import FaceAnalysis
 
@@ -8,7 +10,17 @@ from .config import Settings
 from .decision import decide
 from .schemas import FaceResult
 
+import warnings
+
+warnings.filterwarnings("ignore", message=r".*`estimate` is deprecated.*", category=FutureWarning)
+
 MIN_FACE_WIDTH_PX = 80
+
+
+@dataclass(frozen=True)
+class FaceCandidate:
+    embedding: np.ndarray
+    box: tuple[float, float, float, float]
 
 
 class FaceMatcher:
@@ -33,6 +45,21 @@ class FaceMatcher:
         # ID cards often carry a small "ghost" portrait: the main photo is the largest face.
         best = max(faces, key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]))
         return best, len(faces)
+
+    def candidates(self, img: np.ndarray) -> list[FaceCandidate]:
+        height, width = img.shape[:2]
+        candidates = []
+        for face in self._app.get(img):
+            x0, y0, x1, y1 = face.bbox
+            candidates.append(FaceCandidate(
+                embedding=face.normed_embedding,
+                box=(float(np.clip(x0 / width, 0, 1)), float(np.clip(y0 / height, 0, 1)),
+                     float(np.clip(x1 / width, 0, 1)), float(np.clip(y1 / height, 0, 1))),
+            ))
+        return candidates
+
+    def decide_similarity(self, similarity: float) -> str:
+        return decide(similarity, self._s.face_match_threshold, self._s.face_review_threshold)
 
     def compare(self, img_a: np.ndarray, img_b: np.ndarray) -> FaceResult:
         (face_a, n_a), (face_b, n_b) = self._largest_face(img_a), self._largest_face(img_b)

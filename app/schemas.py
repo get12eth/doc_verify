@@ -5,22 +5,58 @@ from pydantic import BaseModel, Field
 Decision = Literal["match", "review", "no_match", "unavailable"]
 
 
+class FaceCandidateComparison(BaseModel):
+    candidate_a: int
+    candidate_b: int
+    page_a: int
+    page_b: int
+    box_a: list[float]
+    box_b: list[float]
+    similarity: float
+    decision: Decision
+
+
+class FaceDocumentConsistency(BaseModel):
+    filename: str
+    faces_found: int
+    decision: Decision
+    comparisons: list[FaceCandidateComparison] = Field(default_factory=list)
+
+
+class SignaturePairResult(BaseModel):
+    signatures: list[int] = Field(description="One-based signature slot numbers compared.")
+    pages: list[int] = Field(description="Zero-based page indexes for the compared signatures.")
+    score: float
+    decision: Decision
+
+
+class DocumentSignatureResult(BaseModel):
+    filename: str
+    page: int | None = Field(None, description="Zero-based specimen-signature page.")
+    decision: Decision
+    comparisons: list[SignaturePairResult] = Field(default_factory=list)
+
+
 class FaceResult(BaseModel):
     decision: Decision
     similarity: float | None = Field(None, description="Cosine similarity of ArcFace embeddings (-1..1).")
     faces_found_a: int
     faces_found_b: int
+    page_a: int | None = Field(None, description="Zero-based page used from document A.")
+    page_b: int | None = Field(None, description="Zero-based page used from document B.")
+    candidate_comparisons: list[FaceCandidateComparison] = Field(default_factory=list)
+    within_document_a: list[FaceCandidateComparison] = Field(default_factory=list)
+    within_document_b: list[FaceCandidateComparison] = Field(default_factory=list)
+    within_document_decision: Decision = "unavailable"
+    within_documents: list[FaceDocumentConsistency] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
 
 
 class SignatureResult(BaseModel):
     decision: Decision
-    score: float | None = Field(None, ge=0, le=1, description="Similarity (0..1) from the active method.")
+    minimum_pair_score: float | None = Field(None, ge=0, le=1, description="Lowest available within-document signature-pair similarity.")
     method: Literal["heuristic", "siamese", "sigverse"] = "heuristic"
-    components: dict[str, float] = Field(default_factory=dict)
-    box_source: Literal["manual", "auto", "none"] = "none"
-    box_a: list[float] | None = Field(None, description="Relative x0,y0,x1,y1 used for document A.")
-    box_b: list[float] | None = None
+    documents: list[DocumentSignatureResult] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
 
 
@@ -39,7 +75,6 @@ class PairCompareResult(BaseModel):
     document_b: int = Field(description="Zero-based index of the second document.")
     overall: Decision
     face: FaceResult
-    signature: SignatureResult
 
 
 class MultiCompareResult(BaseModel):
@@ -47,4 +82,6 @@ class MultiCompareResult(BaseModel):
     document_count: int
     overall: Decision
     comparisons: list[PairCompareResult]
+    face_consistency: list[FaceDocumentConsistency] = Field(default_factory=list)
+    signature_consistency: SignatureResult
     disclaimer: str = "Automated similarity score for decision support only; not forensic or legal proof."

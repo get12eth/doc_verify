@@ -8,6 +8,7 @@ The result is decision support only. It is not forensic or legal proof.
 
 - Python 3.10 or newer
 - Linux, macOS, or Windows
+- Tesseract OCR installed and available as `tesseract` on `PATH` for specimen-signature row detection
 - Internet access on first startup to download the InsightFace `buffalo_l` model pack, unless it is already cached
 
 ## Install and run
@@ -57,6 +58,8 @@ curl -X POST http://127.0.0.1:8000/v1/compare \
 
 The face comparison always runs. Signature comparison runs when both signature boxes are supplied or when a signature detector is configured. If neither is available, the signature decision is `unavailable` and the overall decision is `review` unless face evidence is a `no_match`.
 
+Upload one file by omitting `doc_b` to run within-document signature consistency only. Face comparison requires two files. The service searches every page for an OCR-recognized specimen-signature heading and a unique row of three aligned signature-like ink groups directly below it. It compares only that row; ambiguous or unrecognized rows return `unavailable` instead of comparing arbitrary marks. Install the Tesseract OCR executable in the runtime environment and make `tesseract` available on `PATH`. Manual signature boxes identify a single crop and are not used for within-document consistency scoring.
+
 ### Compare multiple documents
 
 Pass each file as another `documents` field. The service compares all unique pairs; for $N$ documents there are $N(N-1)/2$ comparisons. The default maximum is 10 documents.
@@ -68,11 +71,11 @@ curl -X POST http://127.0.0.1:8000/v1/compare/multiple \
   -F 'documents=@passport.jpg'
 ```
 
-Optional repeated fields are `pages`, `face_boxes`, and `sig_boxes`; provide one value per document when using them. Page indexes are zero-based. Boxes use normalized `x0,y0,x1,y1` coordinates. Leave a box value empty to request automatic detection when a signature detector is configured. Pair indexes in the JSON response are zero-based.
+Optional repeated fields are `pages`, `face_boxes`, and `sig_boxes`; provide one value per document when using them. Page indexes are zero-based; use `-1` to search every PDF page (the upload page does this automatically). Boxes use normalized `x0,y0,x1,y1` coordinates. Leave a box value empty to request automatic detection when a signature detector is configured. Pair indexes in the JSON response are zero-based.
 
 ### Response format
 
-Responses include a `request_id`, an overall decision, and the per-check results. The multiple-document response contains one result for each document pair. Face results report similarity, the number of detected faces, and warnings. Signature results report similarity, scoring method, box information, and warnings. A score is not a probability.
+Responses include a `request_id`, an overall decision, and per-check results. Face matching includes both cross-document pairs and within-document pairs. Per-file face consistency is returned in `face.within_documents` for a single upload and top-level `face_consistency` for multiple uploads, with detected counts, decisions, candidate pairs, and page/box positions. Signatures are compared only within each uploaded document. `signature.documents` (or `signature_consistency.documents` for multiple uploads) contains each filename, specimen page, consistency decision, and pair comparisons using one-based signature-slot numbers. `minimum_pair_score` is the lowest available within-document pair score. Multi-upload results return signature consistency once at the top level, not repeated in each face-pair result. No cross-document signature scores are produced. At most 20 face candidates per document are included in pairwise checks. A score is not a probability.
 
 Typical pair response shape:
 

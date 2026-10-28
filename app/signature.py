@@ -176,7 +176,7 @@ def compare_signatures(img_a: np.ndarray, img_b: np.ndarray, settings: "Settings
     return SignatureResult(
     
         decision=decide(score, match_at, review_at),
-        score=round(score, 4),
+        minimum_pair_score=round(score, 4),
         method=method,
         components={k: round(v, 4) for k, v in components.items()},
         warnings=warnings,
